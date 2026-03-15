@@ -1,0 +1,119 @@
+:root {
+  --bg: #0b1220;
+  --card: #0f1a2e;
+  --text: #eaf2ff;
+  --muted: #9bb0d1;
+  --accent: #6ee7ff;
+  --ok: #34d399;
+  --bad: #fb7185;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    Segoe UI,
+    Inter,
+    Arial,
+    sans-serif;
+  background: radial-gradient(
+    1200px 600px at 20% 10%,
+    #10244c 0%,
+    var(--bg) 60%
+  );
+  color: var(--text);
+}
+.container {
+  max-width: 1000px;
+  margin: 28px auto;
+  padding: 0 16px;
+}
+header {
+  margin-bottom: 18px;
+}
+.title {
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+.subtitle {
+  color: var(--muted);
+  margin-top: 6px;
+}
+.card {
+  background: linear-gradient(
+    180deg,
+    rgba(110, 231, 255, 0.08),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid rgba(110, 231, 255, 0.18);
+  border-radius: 16px;
+  padding: 16px;
+  margin: 14px 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+h2 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+}
+input[type="text"] {
+  width: 260px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #071022;
+  color: var(--text);
+  margin: 10px 8px 10px 0;
+}
+button {
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(110, 231, 255, 0.35);
+  background: rgba(110, 231, 255, 0.1);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 650;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+#job {
+  margin-top: 10px;
+  color: var(--muted);
+}
+.finding {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 10px 0;
+  background: rgba(0, 0, 0, 0.15);
+}
+.ftitle {
+  font-weight: 750;
+}
+.fdesc {
+  color: var(--muted);
+  margin-top: 4px;
+}
+.floc {
+  color: rgba(110, 231, 255, 0.8);
+  margin-top: 6px;
+  font-size: 12px;
+}
+pre {
+  background: #071022;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px;
+  border-radius: 12px;
+  overflow: auto;
+}
+footer {
+  color: var(--muted);
+  margin: 18px 0 30px;
+}

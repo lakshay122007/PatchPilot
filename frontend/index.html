@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>PatchPilot</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="title">PatchPilot</div>
+        <div class="subtitle">Evidence‑Driven Vulnerability Remediation</div>
+      </header>
+
+      <section class="card">
+        <h2>1) Upload project (ZIP)</h2>
+        <input id="zip" type="file" accept=".zip" />
+        <input
+          id="projectName"
+          type="text"
+          placeholder="Project name"
+          value="demo-project"
+        />
+        <button id="scanBtn">Scan</button>
+        <div id="job"></div>
+      </section>
+
+      <section class="card">
+        <h2>2) Findings</h2>
+        <div id="findings"></div>
+      </section>
+
+      <section class="card">
+        <h2>3) Fix (safe MVP)</h2>
+        <button id="fixBtn" disabled>Propose Fixes for Selected</button>
+        <pre id="fixOut"></pre>
+      </section>
+
+      <section class="card">
+        <h2>4) Verify</h2>
+        <button id="verifyBtn" disabled>Run Verification</button>
+        <pre id="verifyOut"></pre>
+      </section>
+
+      <section class="card">
+        <h2>5) Evidence Pack</h2>
+        <button id="evidenceBtn" disabled>Download Evidence Pack</button>
+      </section>
+
+      <footer>API: <span id="apiUrl"></span></footer>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
