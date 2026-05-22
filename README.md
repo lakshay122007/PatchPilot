@@ -2,7 +2,7 @@
 
 PatchPilot is a lightweight security scanning and remediation MVP that lets you upload a codebase (ZIP) or import a GitHub repository URL, run multiple security scanners, and generate an evidence pack for reporting/compliance.
 
-Features:
+What it does:
 
 - **Scan**: run SAST + dependency + secret scanning
 - **Fix**: propose remediations for selected findings
