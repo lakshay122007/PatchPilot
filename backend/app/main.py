@@ -19,8 +19,11 @@ from .remediation.engine import propose_fixes
 from .sandbox.verify import verify_repo
 from .reports.evidence_pack import build_evidence_pack
 from .utils.fs import unzip_to_dir, safe_rmtree, ensure_dir
-from .db import init_db
+import uuid
+import logging
+from .db import init_db, get_db
 
+logger = logging.getLogger(__name__)
 app = FastAPI(title="PatchPilot API", version="0.1.0")
 
 app.add_middleware(
@@ -143,6 +146,22 @@ async def scan(
 
     semgrep, osv, gitleaks, findings = _scan_repo_dir(scan_root)
 
+    try:
+        async with await get_db() as db:
+            await db.execute(
+                "INSERT INTO jobs (job_id, project_name, scan_method) VALUES (?, ?, ?)",
+                (job_id, project_name, "zip")
+            )
+            for f in findings:
+                await db.execute(
+                    "INSERT INTO findings (id, job_id, rule_id, severity, category, file_path, line_number, cwe, scanner, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), job_id, f.rule_id, f.severity, f.category,
+                     f.file_path, f.line_number, f.cwe, f.scanner, f.message)
+                )
+            await db.commit()
+    except Exception as e:
+        logger.warning(f"DB write failed for job {job_id}: {e}")
+
     return ScanResponse(
         job_id=job_id,
         project_name=project_name,
@@ -186,6 +205,22 @@ async def scan_url(
     scan_root = _maybe_use_single_top_folder(repo_dir)
 
     semgrep, osv, gitleaks, findings = _scan_repo_dir(scan_root)
+
+    try:
+        async with await get_db() as db:
+            await db.execute(
+                "INSERT INTO jobs (job_id, project_name, scan_method) VALUES (?, ?, ?)",
+                (job_id, project_name, "url")
+            )
+            for f in findings:
+                await db.execute(
+                    "INSERT INTO findings (id, job_id, rule_id, severity, category, file_path, line_number, cwe, scanner, message) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (str(uuid.uuid4()), job_id, f.rule_id, f.severity, f.category,
+                     f.file_path, f.line_number, f.cwe, f.scanner, f.message)
+                )
+            await db.commit()
+    except Exception as e:
+        logger.warning(f"DB write failed for job {job_id}: {e}")
 
     return ScanResponse(
         job_id=job_id,
