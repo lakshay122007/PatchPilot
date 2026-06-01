@@ -163,9 +163,7 @@ async def scan(
 
         semgrep, osv, gitleaks, findings = _scan_repo_dir(scan_root)
 
-        success = True
-
-        return ScanResponse(
+        response = ScanResponse(
             job_id=job_id,
             project_name=project_name,
             repo_path=str(scan_root),
@@ -177,6 +175,10 @@ async def scan(
             },
         )
 
+        success = True
+        return response
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Scan failed: {e}")
 
@@ -221,9 +223,7 @@ async def scan_url(
 
         semgrep, osv, gitleaks, findings = _scan_repo_dir(scan_root)
 
-        success = True
-
-        return ScanResponse(
+        response = ScanResponse(
             job_id=job_id,
             project_name=project_name,
             repo_path=str(scan_root),
@@ -235,8 +235,10 @@ async def scan_url(
             },
         )
 
+        success = True
+        return response
+
     except asyncio.TimeoutError:
-        safe_rmtree(job_dir)
         raise HTTPException(status_code=504, detail="Repository clone timed out.")
     except HTTPException:
         raise
