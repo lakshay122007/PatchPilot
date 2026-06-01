@@ -32,8 +32,7 @@ app.add_middleware(
 )
 
 WORK_ROOT = Path(
-    os.environ.get("PATCHPILOT_WORKDIR", Path(
-        tempfile.gettempdir()) / "patchpilot")
+    os.environ.get("PATCHPILOT_WORKDIR", Path(tempfile.gettempdir()) / "patchpilot")
 )
 ensure_dir(WORK_ROOT)
 
@@ -180,8 +179,7 @@ async def scan_url(
         raise
     except Exception as e:
         safe_rmtree(job_dir)
-        raise HTTPException(
-            status_code=400, detail=f"Import from URL failed: {e}")
+        raise HTTPException(status_code=400, detail=f"Import from URL failed: {e}")
 
     scan_root = _maybe_use_single_top_folder(repo_dir)
 
