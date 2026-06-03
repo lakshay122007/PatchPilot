@@ -4,7 +4,8 @@ import json
 from pathlib import Path
 from typing import List
 
-from ..models import Finding
+from ..models import Finding, Reachability
+from ..utils.fs import check_reachability
 from ..utils.exec import run_cmd
 
 
@@ -42,19 +43,25 @@ def run_osv_scanner(repo_dir: Path) -> List[Finding]:
         return []
 
     out: List[Finding] = []
+    unique_packages = set()
 
     results = data.get("results", []) or []
     for res in results:
         packages = res.get("packages", []) or []
         for pkg in packages:
             vulns = pkg.get("vulnerabilities", []) or []
+            if not vulns:
+                continue
+            pkg_name = (pkg.get("package", {}) or {}).get("name")
+            if pkg_name:
+                unique_packages.add(pkg_name)
+
             for v in vulns:
                 vuln_id = v.get("id", "OSV-UNKNOWN")
-                pkg_name = (pkg.get("package", {}) or {}).get("name", "pkg")
 
                 out.append(
                     Finding(
-                        id=f"osv:{vuln_id}:{pkg_name}",
+                        id=f"osv:{vuln_id}:{pkg_name or 'pkg'}",
                         category="dependency",
                         severity="HIGH",
                         title=f"Dependency vulnerability {vuln_id}",
@@ -71,6 +78,17 @@ def run_osv_scanner(repo_dir: Path) -> List[Finding]:
                             "stderr": stderr[:2000] if stderr else None,
                         },
                     )
+                )
+
+    if unique_packages:
+        reachability_results = check_reachability(repo_dir, unique_packages)
+
+        for finding in out:
+            pkg_name = (finding.metadata.get("package") or {}).get("name")
+            if pkg_name and pkg_name in reachability_results:
+                reachable, evidence = reachability_results[pkg_name]
+                finding.reachability = Reachability(
+                    reachable=reachable, evidence=evidence
                 )
 
     return out
