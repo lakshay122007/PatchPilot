@@ -74,10 +74,15 @@ def run_osv_scanner(repo_dir: Path) -> List[Finding]:
                     )
                 )
 
+    reachability_cache: dict[str, tuple[bool, str | None]] = {}
     for finding in out:
-        pkg_name = finding.metadata.get("package", {}).get("name")
-        if pkg_name:
-            reachable, evidence = check_reachability(repo_dir, pkg_name)
-            finding.reachability = Reachability(reachable=reachable, evidence=evidence)
+        pkg_name = (finding.metadata.get("package") or {}).get("name")
+        if not pkg_name:
+            continue
+
+        if pkg_name not in reachability_cache:
+            reachability_cache[pkg_name] = check_reachability(repo_dir, pkg_name)
+        reachable, evidence = reachability_cache[pkg_name]
+        finding.reachability = Reachability(reachable=reachable, evidence=evidence)
 
     return out
