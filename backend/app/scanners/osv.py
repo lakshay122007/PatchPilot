@@ -8,6 +8,8 @@ from ..models import Finding, Reachability
 from ..utils.fs import check_reachability
 from ..utils.exec import run_cmd
 
+from ..utils.ml_features import extract_features
+
 
 def run_osv_scanner(repo_dir: Path) -> List[Finding]:
     """
@@ -59,11 +61,25 @@ def run_osv_scanner(repo_dir: Path) -> List[Finding]:
             for v in vulns:
                 vuln_id = v.get("id", "OSV-UNKNOWN")
 
+                finding_id = f"osv:{vuln_id}:{pkg_name or 'pkg'}"
+                severity = "HIGH"
+
+                raw_data_for_extractor = {
+                    "id": finding_id,
+                    "severity": severity,
+                    "location": {},
+                    "metadata": {"cwe_category": "unknown"},
+                }
+
+                ml_features = extract_features(
+                    raw_data_for_extractor, scanner_name="osv"
+                )
+
                 out.append(
                     Finding(
-                        id=f"osv:{vuln_id}:{pkg_name or 'pkg'}",
+                        id=finding_id,
                         category="dependency",
-                        severity="HIGH",
+                        severity=severity,
                         title=f"Dependency vulnerability {vuln_id}",
                         description=(v.get("summary") or v.get("details") or "")[:1000],
                         location=None,
@@ -77,6 +93,7 @@ def run_osv_scanner(repo_dir: Path) -> List[Finding]:
                             "returncode": returncode,
                             "stderr": stderr[:2000] if stderr else None,
                         },
+                        features=ml_features,
                     )
                 )
 
