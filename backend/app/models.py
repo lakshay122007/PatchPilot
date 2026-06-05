@@ -24,6 +24,7 @@ class Finding(BaseModel):
     location: Optional[Location] = None
     metadata: Dict[str, Any] = Field(default_factory=dict)
     reachability: Optional[Reachability] = None
+    features: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 
 class ScanResponse(BaseModel):
