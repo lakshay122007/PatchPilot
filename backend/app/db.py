@@ -42,6 +42,16 @@ async def init_db():
             )
         """)
 
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS contributor_stats (
+                github_username TEXT PRIMARY KEY,
+                findings_closed INTEGER DEFAULT 0,
+                fixes_passed INTEGER DEFAULT 0,
+                prs_merged INTEGER DEFAULT 0,
+                last_updated TEXT DEFAULT (datetime('now'))
+            )
+        """)
+
         db.row_factory = aiosqlite.Row
         cursor = await db.execute("PRAGMA table_info(findings)")
         columns = [row["name"] for row in await cursor.fetchall()]
@@ -179,3 +189,39 @@ async def get_dependency_diff():
             "resolved": resolved,
             "persistent": persistent,
         }
+
+
+async def get_leaderboard_stats():
+    """Fetches all contributors sorted by their weighted score."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("""
+            SELECT 
+                github_username,
+                findings_closed,
+                fixes_passed,
+                prs_merged,
+                last_updated,
+                (fixes_passed * 3) + (prs_merged * 2) + (findings_closed * 1) as total_score
+            FROM contributor_stats
+            ORDER BY total_score DESC
+        """)
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+async def upsert_contributor_stat(username: str, findings: int = 0, fixes: int = 0, prs: int = 0):
+    """Increments a contributor's stats. Creates the row if they don't exist."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("""
+            INSERT INTO contributor_stats 
+                (github_username, findings_closed, fixes_passed, prs_merged, last_updated)
+            VALUES 
+                (?, ?, ?, ?, datetime('now'))
+            ON CONFLICT(github_username) DO UPDATE SET
+                findings_closed = findings_closed + excluded.findings_closed,
+                fixes_passed = fixes_passed + excluded.fixes_passed,
+                prs_merged = prs_merged + excluded.prs_merged,
+                last_updated = datetime('now')
+        """, (username, findings, fixes, prs))
+        await db.commit()

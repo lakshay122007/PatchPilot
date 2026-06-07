@@ -15,12 +15,16 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+from pydantic import BaseModel
+
 from .db import (
     init_db,
     get_db,
     get_trend_data,
     get_cwe_distribution,
     get_dependency_diff,
+    get_leaderboard_stats,
+    upsert_contributor_stat,
 )
 from .models import ScanResponse, Finding, FixRequest, FixResponse, VerifyResponse
 from .remediation.engine import propose_fixes
@@ -566,3 +570,42 @@ async def cwe_distribution_endpoint():
 async def dependency_diff_endpoint():
     data = await get_dependency_diff()
     return data
+
+
+class LeaderboardUpdateRequest(BaseModel):
+    github_username: str
+    pr_description: str = ""
+    fixes_passed: int = 0
+    is_pr_merged: bool = False
+
+
+@app.get("/leaderboard")
+async def leaderboard_endpoint():
+    data = await get_leaderboard_stats()
+    return data
+
+
+@app.post("/leaderboard/update")
+async def update_leaderboard_endpoint(req: LeaderboardUpdateRequest):
+    pattern = r"(?i)(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s+#(\d+)"
+    matches = re.findall(pattern, req.pr_description)
+    
+    findings_closed = len(set(matches))
+    prs_merged = 1 if req.is_pr_merged else 0
+    
+    await upsert_contributor_stat(
+        username=req.github_username,
+        findings=findings_closed,
+        fixes=req.fixes_passed,
+        prs=prs_merged
+    )
+    
+    return {
+        "status": "success",
+        "github_username": req.github_username,
+        "stats_added": {
+            "findings_closed": findings_closed,
+            "fixes_passed": req.fixes_passed,
+            "prs_merged": prs_merged
+        }
+    }

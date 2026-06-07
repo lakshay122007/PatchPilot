@@ -176,3 +176,35 @@ export const getDependencyDiff = async (): Promise<DependencyDiffResult> => {
   }
   return response.json();
 };
+
+export interface ContributorStat {
+  github_username: string;
+  findings_closed: number;
+  fixes_passed: number;
+  prs_merged: number;
+  last_updated: string;
+  total_score: number;
+}
+
+export interface LeaderboardUpdateRequest {
+  github_username: string;
+  pr_description?: string;
+  fixes_passed?: number;
+  is_pr_merged?: boolean;
+}
+
+export async function getLeaderboard(): Promise<ContributorStat[]> {
+  const res = await fetch(`${API_BASE}/leaderboard`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function updateLeaderboard(data: LeaderboardUpdateRequest) {
+  const res = await fetch(`${API_BASE}/leaderboard/update`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
