@@ -107,6 +107,7 @@ def build_feature_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     return feature_df
 
+
 def prepare_dataset(df: pd.DataFrame):
     feature_df = build_feature_dataframe(df)
     y = df["severity"].str.upper().map(SEVERITY_MAP)
@@ -128,10 +129,8 @@ def prepare_dataset(df: pd.DataFrame):
 
 
 def train_model(X: pd.DataFrame, y: pd.Series, test_size: float = 0.2) -> Pipeline:
-    categorical_cols = X.select_dtypes(
-        include=["object", "string"]
-    ).columns.tolist()
-    
+    categorical_cols = X.select_dtypes(include=["object", "string"]).columns.tolist()
+
     numeric_cols = [c for c in X.columns if c not in categorical_cols]
 
     preprocessor = ColumnTransformer(
