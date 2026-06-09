@@ -10,6 +10,7 @@ from ..utils.exec import run_cmd
 
 from ..utils.ml_features import extract_features
 
+
 def map_cvss_to_severity(score):
     if score >= 9:
         return "CRITICAL"
@@ -20,6 +21,7 @@ def map_cvss_to_severity(score):
     elif score > 0:
         return "LOW"
     return "INFO"
+
 
 def run_osv_scanner(repo_dir: Path) -> List[Finding]:
     """
@@ -75,7 +77,6 @@ def run_osv_scanner(repo_dir: Path) -> List[Finding]:
                 severity = "HIGH"
 
                 try:
-
                     severity_data = v.get("severity", [])
 
                     if severity_data:
@@ -83,7 +84,9 @@ def run_osv_scanner(repo_dir: Path) -> List[Finding]:
 
                         import re
 
-                        match = re.search(r"CVSS:3\.[01]/.*?/([0-9]+\.[0-9]+)$", score_text)
+                        match = re.search(
+                            r"CVSS:3\.[01]/.*?/([0-9]+\.[0-9]+)$", score_text
+                        )
 
                         if match:
                             cvss_score = float(match.group(1))
