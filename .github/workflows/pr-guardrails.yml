@@ -1,14 +1,13 @@
 name: PR Guardrails
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
   pull-requests: write 
   contents: read       
-  issues: write   
-  statuses: write
+  issues: write
 
 jobs:
   triage-and-security:
