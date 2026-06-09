@@ -156,17 +156,63 @@ def github_zip_url(repo_url: str, ref: str = "main") -> str:
     return f"https://github.com/{owner}/{repo}/archive/refs/heads/{ref}.zip"
 
 
+ALLOWED_REDIRECT_HOSTS = {
+    "github.com",
+    "codeload.github.com",
+    "objects.githubusercontent.com",
+}
+
+MAX_REDIRECTS = 5
+
+
 async def download_to_path(url: str, dest_path: Path) -> None:
+    """
+    Download *url* to *dest_path*, following redirects only to hosts in
+    ALLOWED_REDIRECT_HOSTS.  Blindly following redirects (follow_redirects=True)
+    would allow a crafted URL to redirect the server to an internal address
+    (e.g. cloud-metadata at 169.254.169.254), enabling SSRF.
+    """
     dest_path.parent.mkdir(parents=True, exist_ok=True)
     timeout = httpx.Timeout(120.0, connect=30.0)
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-        r = await client.get(url)
-        if r.status_code != 200:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to download repo ZIP ({r.status_code}).",
-            )
-        dest_path.write_bytes(r.content)
+
+    current_url = url
+    async with httpx.AsyncClient(timeout=timeout, follow_redirects=False) as client:
+        for _ in range(MAX_REDIRECTS):
+            parsed = httpx.URL(current_url)
+            if parsed.host not in ALLOWED_REDIRECT_HOSTS:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Redirect to disallowed host '{parsed.host}' was blocked. "
+                        f"Only {sorted(ALLOWED_REDIRECT_HOSTS)} are permitted."
+                    ),
+                )
+
+            r = await client.get(current_url)
+
+            if r.status_code in (301, 302, 303, 307, 308):
+                location = r.headers.get("location")
+                if not location:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Redirect response missing Location header.",
+                    )
+                current_url = str(r.headers["location"])
+                continue
+
+            if r.status_code != 200:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to download repo ZIP ({r.status_code}).",
+                )
+
+            dest_path.write_bytes(r.content)
+            return
+
+    raise HTTPException(
+        status_code=400,
+        detail=f"Too many redirects (max {MAX_REDIRECTS}) while downloading repo ZIP.",
+    )
 
 
 def _maybe_use_single_top_folder(repo_dir: Path) -> Path:
