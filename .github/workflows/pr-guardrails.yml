@@ -28,20 +28,73 @@ jobs:
             const prNumber = context.issue.number;
             const repoInfo = context.repo;
 
-            // --- 1. VALIDATE TEMPLATE ---
+            // --- 1. STRICT TEMPLATE VALIDATION ---
             const hasLinkedIssue = /Closes #\d+/.test(prBody);
-            
-            let hasDescription = false;
+
+            // Enforce all main headings exist
+            const hasMandatoryHeaders = [
+              "## Linked issue",
+              "## What this PR does",
+              "## Type of change",
+              "## ML tier (if applicable)",
+              "## Changes",
+              "## Testing",
+              "**How did you test this?**",
+              "**Checklist**",
+              "## Anything reviewers should focus on"
+            ].every(header => prBody.includes(header));
+
+            // Enforce NO checkboxes were deleted (accepts checked [x] or unchecked [ ])
+            const hasAllTypeCheckboxes = [
+              /-\s*\[[ xX]\]\s*Bug fix/i,
+              /-\s*\[[ xX]\]\s*New feature/i,
+              /-\s*\[[ xX]\]\s*ML model/i,
+              /-\s*\[[ xX]\]\s*Refactor/i,
+              /-\s*\[[ xX]\]\s*Documentation/i,
+              /-\s*\[[ xX]\]\s*Tests only/i
+            ].every(regex => regex.test(prBody));
+
+            const hasAllMLCheckboxes = [
+              /-\s*\[[ xX]\]\s*Tier 1/i,
+              /-\s*\[[ xX]\]\s*Tier 2/i,
+              /-\s*\[[ xX]\]\s*Tier 3/i,
+              /-\s*\[[ xX]\]\s*Not ML-related/i
+            ].every(regex => regex.test(prBody));
+
+            const hasAllTestingCheckboxes = [
+              /-\s*\[[ xX]\]\s*Tested locally end-to-end/i,
+              /-\s*\[[ xX]\]\s*New ML model falls back/i,
+              /-\s*\[[ xX]\]\s*No new `console\.error`/i,
+              /-\s*\[[ xX]\]\s*Added or updated tests/i,
+              /-\s*\[[ xX]\]\s*`requirements\.txt`/i,
+              /-\s*\[[ xX]\]\s*New model files/i
+            ].every(regex => regex.test(prBody));
+
+            // Enforce written explanations exist (strip HTML comments first)
+            let hasDescContent = false;
             const descMatch = prBody.match(/## What this PR does([\s\S]*?)## Type of change/);
-            if (descMatch && descMatch[1]) {
-              const cleanDesc = descMatch[1].replace(/<!--[\s\S]*?-->/g, '').trim();
-              if (cleanDesc.length > 5) hasDescription = true;
+            if (descMatch) {
+              const cleanDesc = descMatch[1].replace(//g, '').trim();
+              if (cleanDesc.length > 5) hasDescContent = true;
             }
 
-            const isValid = hasLinkedIssue && hasDescription;
+            let hasTestContent = false;
+            const testMatch = prBody.match(/\*\*How did you test this\?\*\*([\s\S]*?)\*\*Checklist\*\*/);
+            if (testMatch) {
+              const cleanTest = testMatch[1].replace(//g, '').trim();
+              if (cleanTest.length > 5) hasTestContent = true;
+            }
+
+            const isValid = hasLinkedIssue &&
+                            hasMandatoryHeaders &&
+                            hasAllTypeCheckboxes &&
+                            hasAllMLCheckboxes &&
+                            hasAllTestingCheckboxes &&
+                            hasDescContent &&
+                            hasTestContent;
 
             if (!isValid) {
-              console.log("Validation failed. Ensuring 'needs-work' label is present.");
+              console.log("Strict validation failed. Ensuring 'needs-work' label is present.");
               await github.rest.issues.addLabels({
                 ...repoInfo,
                 issue_number: prNumber,
@@ -58,7 +111,7 @@ jobs:
                 await github.rest.issues.createComment({
                   ...repoInfo,
                   issue_number: prNumber,
-                  body: "⚠️ **Automated Check:** It looks like this PR is missing required information. Please ensure you have linked the tracking issue (e.g., `Closes #123`) and filled out the `What this PR does` section so maintainers can review it properly."
+                  body: "⚠️ **Automated Check:** This PR does not strictly follow the required template. Please ensure you have not deleted any checkboxes or mandatory headings, and that you have written explanations under `What this PR does` and `How did you test this?`."
                 });
               }
             } else {
@@ -77,27 +130,27 @@ jobs:
             // --- 2. AUTO-LABELING ---
             const labelsToAdd = new Set();
             
-            // Srijan's rule: SSOC on every PR
-            labelsToAdd.add('SSOC');
+            // Mandatory label for all PRs
+            labelsToAdd.add('SSoC26');
             
-            // Parse Checkboxes
-            if (/-\s*\[x\]\s*Bug fix/i.test(prBody)) labelsToAdd.add('bug');
-            if (/-\s*\[x\]\s*New feature/i.test(prBody)) labelsToAdd.add('enhancement');
-            if (/-\s*\[x\]\s*Refactor/i.test(prBody)) labelsToAdd.add('refactor');
-            if (/-\s*\[x\]\s*Documentation/i.test(prBody)) labelsToAdd.add('documentation');
-            if (/-\s*\[x\]\s*Tests only/i.test(prBody)) labelsToAdd.add('test');
-            if (/-\s*\[x\]\s*(ML model|Tier 1|Tier 2|Tier 3)/i.test(prBody)) labelsToAdd.add('ml');
+            // Parse Checkboxes for automated labels
+            if (/-\s*\[[xX]\]\s*Bug fix/i.test(prBody)) labelsToAdd.add('bug');
+            if (/-\s*\[[xX]\]\s*New feature/i.test(prBody)) labelsToAdd.add('enhancement');
+            if (/-\s*\[[xX]\]\s*Refactor/i.test(prBody)) labelsToAdd.add('refactor');
+            if (/-\s*\[[xX]\]\s*Documentation/i.test(prBody)) labelsToAdd.add('documentation');
+            if (/-\s*\[[xX]\]\s*Tests only/i.test(prBody)) labelsToAdd.add('test');
+            if (/-\s*\[[xX]\]\s*(ML model|Tier 1|Tier 2|Tier 3)/i.test(prBody)) labelsToAdd.add('ml');
             
-            // Parse Backend/Frontend Sections
-            const backendMatch = prBody.match(/### Backend([\s\S]*?)### Frontend/);
+            // Parse Backend/Frontend Sections (Only if they weren't deleted and have content)
+            const backendMatch = prBody.match(/### Backend([\s\S]*?)(### Frontend|### New dependencies|### Database|---)/);
             if (backendMatch && backendMatch[1]) {
-              const cleanBackend = backendMatch[1].replace(/<!--[\s\S]*?-->/g, '').trim();
+              const cleanBackend = backendMatch[1].replace(//g, '').trim();
               if (cleanBackend.length > 0 && cleanBackend !== '-') labelsToAdd.add('backend');
             }
 
-            const frontendMatch = prBody.match(/### Frontend([\s\S]*?)### New dependencies/);
+            const frontendMatch = prBody.match(/### Frontend([\s\S]*?)(### New dependencies|### Database|---)/);
             if (frontendMatch && frontendMatch[1]) {
-              const cleanFrontend = frontendMatch[1].replace(/<!--[\s\S]*?-->/g, '').trim();
+              const cleanFrontend = frontendMatch[1].replace(//g, '').trim();
               if (cleanFrontend.length > 0 && cleanFrontend !== '-') labelsToAdd.add('frontend');
             }
 
