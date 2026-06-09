@@ -164,3 +164,41 @@ jobs:
               
               // THIS CRASHES THE PIPELINE TO RED ❌
               core.setFailed("🚨 PR Template Validation Failed: Missing required sections, explanations, or checkboxes.");
+              
+            } else {
+              // PR IS VALID! Cleanup time.
+              try {
+                await github.rest.issues.removeLabel({
+                  ...repoInfo,
+                  issue_number: prNumber,
+                  name: 'needs-work'
+                });
+                console.log("Removed 'needs-work' label.");
+              } catch (error) {}
+
+              // Find and delete the warning comment
+              try {
+                const comments = await github.rest.issues.listComments({
+                  ...repoInfo,
+                  issue_number: prNumber
+                });
+                const warningComment = comments.data.find(c => c.body.includes("⚠️ **Automated Check:**"));
+                
+                if (warningComment) {
+                  await github.rest.issues.deleteComment({
+                    ...repoInfo,
+                    comment_id: warningComment.id
+                  });
+                  console.log("Deleted warning comment.");
+                }
+              } catch (error) {
+                console.log("Could not delete comment: ", error.message);
+              }
+            }
+
+      - name: Basic Security Scan (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          report_format: sarif
