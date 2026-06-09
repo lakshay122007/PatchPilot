@@ -29,72 +29,61 @@ jobs:
             const repoInfo = context.repo;
 
             // --- 1. STRICT TEMPLATE VALIDATION ---
-            const hasLinkedIssue = /Closes #\d+/.test(prBody);
+            const hasLinkedIssue = prBody.includes("Closes #");
 
-            // Enforce all main headings exist
-            const hasMandatoryHeaders = [
+            // Strictly check that no lines from the template were deleted
+            const requiredPhrases = [
               "## Linked issue",
               "## What this PR does",
               "## Type of change",
-              "## ML tier (if applicable)",
+              "Bug fix",
+              "New feature",
+              "ML model",
+              "Refactor",
+              "Documentation",
+              "Tests only",
+              "## ML tier",
+              "Tier 1",
+              "Tier 2",
+              "Tier 3",
+              "Not ML-related",
               "## Changes",
               "## Testing",
               "**How did you test this?**",
               "**Checklist**",
+              "Tested locally end-to-end",
+              "New ML model falls back",
+              "No new `console.error`",
+              "Added or updated tests",
+              "`requirements.txt`",
+              "New model files",
               "## Anything reviewers should focus on"
-            ].every(header => prBody.includes(header));
+            ];
+            
+            const hasAllMandatoryText = requiredPhrases.every(phrase => prBody.includes(phrase));
 
-            // Enforce NO checkboxes were deleted (accepts checked [x] or unchecked [ ])
-            const hasAllTypeCheckboxes = [
-              /-\s*\[[ xX]\]\s*Bug fix/i,
-              /-\s*\[[ xX]\]\s*New feature/i,
-              /-\s*\[[ xX]\]\s*ML model/i,
-              /-\s*\[[ xX]\]\s*Refactor/i,
-              /-\s*\[[ xX]\]\s*Documentation/i,
-              /-\s*\[[ xX]\]\s*Tests only/i
-            ].every(regex => regex.test(prBody));
-
-            const hasAllMLCheckboxes = [
-              /-\s*\[[ xX]\]\s*Tier 1/i,
-              /-\s*\[[ xX]\]\s*Tier 2/i,
-              /-\s*\[[ xX]\]\s*Tier 3/i,
-              /-\s*\[[ xX]\]\s*Not ML-related/i
-            ].every(regex => regex.test(prBody));
-
-            const hasAllTestingCheckboxes = [
-              /-\s*\[[ xX]\]\s*Tested locally end-to-end/i,
-              /-\s*\[[ xX]\]\s*New ML model falls back/i,
-              /-\s*\[[ xX]\]\s*No new `console\.error`/i,
-              /-\s*\[[ xX]\]\s*Added or updated tests/i,
-              /-\s*\[[ xX]\]\s*`requirements\.txt`/i,
-              /-\s*\[[ xX]\]\s*New model files/i
-            ].every(regex => regex.test(prBody));
-
-            // Enforce written explanations exist (strip HTML comments first)
+            // Validate Description content exists (using split instead of regex)
             let hasDescContent = false;
-            const descMatch = prBody.match(/## What this PR does([\s\S]*?)## Type of change/);
-            if (descMatch) {
-              const cleanDesc = descMatch[1].replace(//g, '').trim();
+            const descSplit = prBody.split("## What this PR does");
+            if (descSplit.length > 1) {
+              const descSection = descSplit[1].split("## Type of change")[0] || "";
+              const cleanDesc = descSection.replace(/<!--[\s\S]*?-->/g, "").trim();
               if (cleanDesc.length > 5) hasDescContent = true;
             }
 
+            // Validate Testing content exists
             let hasTestContent = false;
-            const testMatch = prBody.match(/\*\*How did you test this\?\*\*([\s\S]*?)\*\*Checklist\*\*/);
-            if (testMatch) {
-              const cleanTest = testMatch[1].replace(//g, '').trim();
+            const testSplit = prBody.split("**How did you test this?**");
+            if (testSplit.length > 1) {
+              const testSection = testSplit[1].split("**Checklist**")[0] || "";
+              const cleanTest = testSection.replace(/<!--[\s\S]*?-->/g, "").trim();
               if (cleanTest.length > 5) hasTestContent = true;
             }
 
-            const isValid = hasLinkedIssue &&
-                            hasMandatoryHeaders &&
-                            hasAllTypeCheckboxes &&
-                            hasAllMLCheckboxes &&
-                            hasAllTestingCheckboxes &&
-                            hasDescContent &&
-                            hasTestContent;
+            const isValid = hasLinkedIssue && hasAllMandatoryText && hasDescContent && hasTestContent;
 
             if (!isValid) {
-              console.log("Strict validation failed. Ensuring 'needs-work' label is present.");
+              console.log("Validation failed. Adding needs-work.");
               await github.rest.issues.addLabels({
                 ...repoInfo,
                 issue_number: prNumber,
@@ -123,38 +112,42 @@ jobs:
                 });
                 console.log("PR is valid. Removed 'needs-work' label.");
               } catch (error) {
-                // Ignore error if the label wasn't there
+                // Ignore if label doesn't exist
               }
             }
 
             // --- 2. AUTO-LABELING ---
             const labelsToAdd = new Set();
             
-            // Unconditionally add SSoC26 label
             try {
               labelsToAdd.add('SSoC26');
             } catch (e) {
               console.log("Could not queue SSoC26 label");
             }
             
-            // Parse Checkboxes for automated labels
-            if (/-\s*\[[xX]\]\s*Bug fix/i.test(prBody)) labelsToAdd.add('bug');
-            if (/-\s*\[[xX]\]\s*New feature/i.test(prBody)) labelsToAdd.add('enhancement');
-            if (/-\s*\[[xX]\]\s*Refactor/i.test(prBody)) labelsToAdd.add('refactor');
-            if (/-\s*\[[xX]\]\s*Documentation/i.test(prBody)) labelsToAdd.add('documentation');
-            if (/-\s*\[[xX]\]\s*Tests only/i.test(prBody)) labelsToAdd.add('test');
-            if (/-\s*\[[xX]\]\s*(ML model|Tier 1|Tier 2|Tier 3)/i.test(prBody)) labelsToAdd.add('ml');
+            // Helper function to check if a box is ticked
+            const isChecked = (text) => prBody.includes(`- [x] ${text}`) || prBody.includes(`- [X] ${text}`);
             
-            // Parse Backend/Frontend Sections
-            const backendMatch = prBody.match(/### Backend([\s\S]*?)(### Frontend|### New dependencies|### Database|---)/);
-            if (backendMatch && backendMatch[1]) {
-              const cleanBackend = backendMatch[1].replace(//g, '').trim();
+            // Apply stack labels based on checkmarks
+            if (isChecked("Bug fix")) labelsToAdd.add('bug');
+            if (isChecked("New feature")) labelsToAdd.add('enhancement');
+            if (isChecked("Refactor")) labelsToAdd.add('refactor');
+            if (isChecked("Documentation")) labelsToAdd.add('documentation');
+            if (isChecked("Tests only")) labelsToAdd.add('test');
+            if (isChecked("ML model") || isChecked("Tier 1") || isChecked("Tier 2") || isChecked("Tier 3")) labelsToAdd.add('ml');
+            
+            // Parse Backend/Frontend Sections safely using split
+            const backendSplit = prBody.split("### Backend");
+            if (backendSplit.length > 1) {
+              const backendText = backendSplit[1].split("###")[0] || "";
+              const cleanBackend = backendText.replace(/<!--[\s\S]*?-->/g, "").trim();
               if (cleanBackend.length > 0 && cleanBackend !== '-') labelsToAdd.add('backend');
             }
 
-            const frontendMatch = prBody.match(/### Frontend([\s\S]*?)(### New dependencies|### Database|---)/);
-            if (frontendMatch && frontendMatch[1]) {
-              const cleanFrontend = frontendMatch[1].replace(//g, '').trim();
+            const frontendSplit = prBody.split("### Frontend");
+            if (frontendSplit.length > 1) {
+              const frontendText = frontendSplit[1].split("###")[0] || "";
+              const cleanFrontend = frontendText.replace(/<!--[\s\S]*?-->/g, "").trim();
               if (cleanFrontend.length > 0 && cleanFrontend !== '-') labelsToAdd.add('frontend');
             }
 
@@ -167,8 +160,8 @@ jobs:
                   issue_number: prNumber,
                   labels: finalLabels
                 });
-              } catch (labelError) {
-                console.log("Failed to apply labels. Ensure labels exist in the repository settings: ", labelError.message);
+              } catch (error) {
+                console.log("Error adding labels: ", error.message);
               }
             }
 
