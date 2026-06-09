@@ -31,7 +31,6 @@ jobs:
             // --- 1. STRICT TEMPLATE VALIDATION ---
             const hasLinkedIssue = prBody.includes("Closes #");
 
-            // Strictly check that no lines from the template were deleted
             const requiredPhrases = [
               "## Linked issue",
               "## What this PR does",
@@ -62,21 +61,19 @@ jobs:
             
             const hasAllMandatoryText = requiredPhrases.every(phrase => prBody.includes(phrase));
 
-            // Validate Description content exists (using split instead of regex)
             let hasDescContent = false;
             const descSplit = prBody.split("## What this PR does");
             if (descSplit.length > 1) {
               const descSection = descSplit[1].split("## Type of change")[0] || "";
-              const cleanDesc = descSection.replace(/<!--[\s\S]*?-->/g, "").trim();
+              const cleanDesc = descSection.replace(/<\!--[\s\S]*?-->/g, "").trim();
               if (cleanDesc.length > 5) hasDescContent = true;
             }
 
-            // Validate Testing content exists
             let hasTestContent = false;
             const testSplit = prBody.split("**How did you test this?**");
             if (testSplit.length > 1) {
               const testSection = testSplit[1].split("**Checklist**")[0] || "";
-              const cleanTest = testSection.replace(/<!--[\s\S]*?-->/g, "").trim();
+              const cleanTest = testSection.replace(/<\!--[\s\S]*?-->/g, "").trim();
               if (cleanTest.length > 5) hasTestContent = true;
             }
 
@@ -104,15 +101,33 @@ jobs:
                 });
               }
             } else {
+              // PR IS VALID! Cleanup time.
               try {
                 await github.rest.issues.removeLabel({
                   ...repoInfo,
                   issue_number: prNumber,
                   name: 'needs-work'
                 });
-                console.log("PR is valid. Removed 'needs-work' label.");
+                console.log("Removed 'needs-work' label.");
+              } catch (error) {}
+
+              // Find and delete the warning comment
+              try {
+                const comments = await github.rest.issues.listComments({
+                  ...repoInfo,
+                  issue_number: prNumber
+                });
+                const warningComment = comments.data.find(c => c.body.includes("⚠️ **Automated Check:**"));
+                
+                if (warningComment) {
+                  await github.rest.issues.deleteComment({
+                    ...repoInfo,
+                    comment_id: warningComment.id
+                  });
+                  console.log("Deleted warning comment.");
+                }
               } catch (error) {
-                // Ignore if label doesn't exist
+                console.log("Could not delete comment: ", error.message);
               }
             }
 
@@ -121,14 +136,10 @@ jobs:
             
             try {
               labelsToAdd.add('SSoC26');
-            } catch (e) {
-              console.log("Could not queue SSoC26 label");
-            }
+            } catch (e) {}
             
-            // Helper function to check if a box is ticked
             const isChecked = (text) => prBody.includes(`- [x] ${text}`) || prBody.includes(`- [X] ${text}`);
             
-            // Apply stack labels based on checkmarks
             if (isChecked("Bug fix")) labelsToAdd.add('bug');
             if (isChecked("New feature")) labelsToAdd.add('enhancement');
             if (isChecked("Refactor")) labelsToAdd.add('refactor');
@@ -136,18 +147,17 @@ jobs:
             if (isChecked("Tests only")) labelsToAdd.add('test');
             if (isChecked("ML model") || isChecked("Tier 1") || isChecked("Tier 2") || isChecked("Tier 3")) labelsToAdd.add('ml');
             
-            // Parse Backend/Frontend Sections safely using split
             const backendSplit = prBody.split("### Backend");
             if (backendSplit.length > 1) {
               const backendText = backendSplit[1].split("###")[0] || "";
-              const cleanBackend = backendText.replace(/<!--[\s\S]*?-->/g, "").trim();
+              const cleanBackend = backendText.replace(/<\!--[\s\S]*?-->/g, "").trim();
               if (cleanBackend.length > 0 && cleanBackend !== '-') labelsToAdd.add('backend');
             }
 
             const frontendSplit = prBody.split("### Frontend");
             if (frontendSplit.length > 1) {
               const frontendText = frontendSplit[1].split("###")[0] || "";
-              const cleanFrontend = frontendText.replace(/<!--[\s\S]*?-->/g, "").trim();
+              const cleanFrontend = frontendText.replace(/<\!--[\s\S]*?-->/g, "").trim();
               if (cleanFrontend.length > 0 && cleanFrontend !== '-') labelsToAdd.add('frontend');
             }
 
@@ -160,9 +170,7 @@ jobs:
                   issue_number: prNumber,
                   labels: finalLabels
                 });
-              } catch (error) {
-                console.log("Error adding labels: ", error.message);
-              }
+              } catch (error) {}
             }
 
       - name: Basic Security Scan (Gitleaks)
