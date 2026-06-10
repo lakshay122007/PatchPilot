@@ -6,8 +6,8 @@ and that all three scanners use it consistently.
 """
 
 import pytest
-from app.utils.categories import normalize_category, VALID_CATEGORIES, _FALLBACK
 
+from app.utils.categories import _FALLBACK, VALID_CATEGORIES, normalize_category
 
 # ---------------------------------------------------------------------------
 # normalize_category unit tests
@@ -77,6 +77,7 @@ def test_output_always_in_valid_categories():
 
 def test_osv_scanner_uses_normalize_category():
     import inspect
+
     import app.scanners.osv as osv_mod
 
     source = inspect.getsource(osv_mod)
@@ -86,6 +87,7 @@ def test_osv_scanner_uses_normalize_category():
 
 def test_semgrep_scanner_uses_normalize_category():
     import inspect
+
     import app.scanners.semgrep as semgrep_mod
 
     source = inspect.getsource(semgrep_mod)
@@ -95,6 +97,7 @@ def test_semgrep_scanner_uses_normalize_category():
 
 def test_gitleaks_scanner_uses_normalize_category():
     import inspect
+
     import app.scanners.gitleaks as gitleaks_mod
 
     source = inspect.getsource(gitleaks_mod)

@@ -5,9 +5,9 @@ from pathlib import Path
 from typing import List
 
 from ..models import Finding, Reachability
-from ..utils.fs import check_reachability
-from ..utils.exec import run_cmd
 from ..utils.categories import normalize_category
+from ..utils.exec import run_cmd
+from ..utils.fs import check_reachability
 from ..utils.ml_features import extract_features
 
 

@@ -1,6 +1,7 @@
-from unittest.mock import patch, AsyncMock
-from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, patch
+
 import httpx
+from fastapi.testclient import TestClient
 
 from app.main import app
 
