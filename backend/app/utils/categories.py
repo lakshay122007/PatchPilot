@@ -33,7 +33,7 @@ def normalize_category(raw: str | None) -> str:
     - Resolves known aliases.
     - Falls back to ``_FALLBACK`` ("sast") for anything unrecognised.
 
-    Examples
+    Examples:
     --------
     >>> normalize_category("dependency")
     'dependency'
