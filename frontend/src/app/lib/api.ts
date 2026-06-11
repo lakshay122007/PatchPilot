@@ -18,7 +18,6 @@ export async function getHealth() {
   return (await res.json()) as HealthResponse;
 }
 
-
 export type ScanResponse = {
   job_id: string;
   project_name: string;
@@ -32,11 +31,26 @@ export type BackendFinding = {
   severity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
   category: string;
   title: string;
-  file: string;
-  line: number;
-  tool: "semgrep" | "osv" | "gitleaks" | string;
-  confidence?: number;
   description?: string;
+
+  location?: {
+    path?: string;
+    start_line?: number;
+    end_line?: number;
+  };
+
+  metadata?: {
+    engine?: string;
+    [key: string]: unknown;
+  };
+
+  reachability?: {
+  reachable?: boolean;
+  reason?: string;
+};
+
+features?: Record<string, unknown>;
+  confidence?: number;
   code?: string;
   suggested_fix?: string;
   references?: string[];
