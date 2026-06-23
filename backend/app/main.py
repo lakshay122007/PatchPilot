@@ -63,6 +63,7 @@ from .scanners.gitleaks import run_gitleaks
 from .scanners.osv import run_osv_scanner
 from .scanners.semgrep import run_semgrep
 from .utils.fs import ensure_dir, safe_rmtree, unzip_to_dir
+from .utils.exec import run_cmd
 
 _MAX_UPLOAD_MB_RAW = os.environ.get("MAX_UPLOAD_MB")
 RANKER = load_ranker()
@@ -187,22 +188,38 @@ def _extract_dependencies(repo_dir: Path) -> List[tuple[str, str]]:
 ACTIVE_SCANS = {}
 
 
-def _scan_repo_dir(repo_dir: Path, progress_cb=None):
+def _scan_repo_dir(repo_dir: Path, progress_cb=None, job_dir: Path = None):
     if progress_cb:
         progress_cb("sast", "in_progress")
+    
     semgrep = run_semgrep(repo_dir)
+    if job_dir:
+        semgrep_raw = run_cmd(["semgrep", "--config", "p/ci", "--json", "--quiet"], cwd=repo_dir, timeout_s=600)
+        (job_dir / "raw").mkdir(parents=True, exist_ok=True)
+        (job_dir / "raw" / "semgrep.json").write_text(semgrep_raw.get("stdout", ""), encoding="utf-8")
+        
     if progress_cb:
         progress_cb("sast", "completed")
 
     if progress_cb:
         progress_cb("dependency", "in_progress")
     osv = run_osv_scanner(repo_dir)
+    if job_dir:
+        osv_raw = run_cmd(["osv-scanner", "--json", "--recursive", "."], cwd=repo_dir, timeout_s=600)
+        (job_dir / "raw").mkdir(parents=True, exist_ok=True)
+        (job_dir / "raw" / "osv.json").write_text(osv_raw.get("stdout", ""), encoding="utf-8")
     if progress_cb:
         progress_cb("dependency", "completed")
 
     if progress_cb:
         progress_cb("secrets", "in_progress")
+    
     gitleaks = run_gitleaks(repo_dir)
+    if job_dir:
+        gitleaks_raw = run_cmd(["gitleaks", "detect", "--no-git", "--redact", "--report-format", "json"], cwd=repo_dir, timeout_s=600)
+        (job_dir / "raw").mkdir(parents=True, exist_ok=True)
+        (job_dir / "raw" / "gitleaks.json").write_text(gitleaks_raw.get("stdout", ""), encoding="utf-8")
+        
     if progress_cb:
         progress_cb("secrets", "completed")
 
