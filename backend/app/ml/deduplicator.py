@@ -2,7 +2,18 @@ from collections import defaultdict
 
 from sklearn.cluster import DBSCAN
 
-from app.ml.embedder import embed_findings
+try:
+    from app.ml.embedder import embed_findings
+
+    SENTENCE_TRANSFORMERS_AVAILABLE = True
+except Exception:
+    SENTENCE_TRANSFORMERS_AVAILABLE = False
+
+    def embed_findings(findings):
+        raise RuntimeError(
+            "sentence-transformers is not installed. "
+            "Install it using: pip install sentence-transformers"
+        )
 
 
 def deduplicate(
