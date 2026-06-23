@@ -2,6 +2,10 @@ from collections import defaultdict
 
 from sklearn.cluster import DBSCAN
 
+def get_model():
+        return None
+
+
 try:
     from app.ml.embedder import embed_findings
 
@@ -14,6 +18,7 @@ except Exception:
             "sentence-transformers is not installed. "
             "Install it using: pip install sentence-transformers"
         )
+  
 
 
 def deduplicate(
