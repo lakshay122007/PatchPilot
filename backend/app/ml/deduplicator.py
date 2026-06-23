@@ -13,7 +13,6 @@ def deduplicate(
     Group similar findings using DBSCAN and return
     representative findings with duplicate metadata.
     """
-
     if not findings:
         return []
 
@@ -34,7 +33,6 @@ def deduplicate(
         clusters[label].append(findings[idx])
 
     for label, cluster_findings in clusters.items():
-        # Noise point
         if label == -1:
             for finding in cluster_findings:
                 finding["duplicate_count"] = 0
@@ -50,16 +48,15 @@ def deduplicate(
         related_files = [
             finding.get("file_path")
             for finding in cluster_findings
-            if finding.get("file_path")
-            != representative.get("file_path")
+            if finding.get("file_path") != representative.get("file_path")
         ]
 
         representative["duplicate_count"] = len(cluster_findings)
-
         representative["related_files"] = related_files
 
         results.append(representative)
 
+<<<<<<< HEAD
     return resultsfrom collections import defaultdict
 
 from sklearn.cluster import DBSCAN
@@ -122,4 +119,6 @@ def deduplicate(
 
         results.append(representative)
 
+=======
+>>>>>>> 6c60876 (feat: add DBSCAN-based finding deduplication)
     return results
