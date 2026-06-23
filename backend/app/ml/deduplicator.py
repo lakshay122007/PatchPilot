@@ -54,24 +54,15 @@ def deduplicate(
     for label, cluster_findings in clusters.items():
         if label == -1:
             for finding in cluster_findings:
-                finding["duplicate_count"] = 0
-                finding["related_files"] = []
+                # finding["duplicate_count"] = 0
+                # finding["related_files"] = []
                 results.append(finding)
             continue
 
-        representative = max(
-            cluster_findings,
-            key=lambda finding: finding.get("raw_severity", 0),
-        )
+        representative = cluster_findings[0]
 
-        related_files = [
-            finding.get("file_path")
-            for finding in cluster_findings
-            if finding.get("file_path") != representative.get("file_path")
-        ]
-
-        representative["duplicate_count"] = len(cluster_findings)
-        representative["related_files"] = related_files
+        # representative["duplicate_count"] = len(cluster_findings)
+        # representative["related_files"] = related_files
 
         results.append(representative)
 
