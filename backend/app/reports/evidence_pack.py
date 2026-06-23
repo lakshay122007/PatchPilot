@@ -14,14 +14,25 @@ def build_evidence_pack(
 
     # Collect tool outputs (best effort)
     raw_dir = repo_dir.parent / "raw"
-    semgrep_content = (raw_dir / "semgrep.json").read_text(encoding="utf-8") if (raw_dir / "semgrep.json").exists() else ""
-    osv_content = (raw_dir / "osv.json").read_text(encoding="utf-8") if (raw_dir / "osv.json").exists() else ""
-    gitleaks_content = (raw_dir / "gitleaks.json").read_text(encoding="utf-8") if (raw_dir / "gitleaks.json").exists() else ""
+    semgrep_content = (
+        (raw_dir / "semgrep.json").read_text(encoding="utf-8")
+        if (raw_dir / "semgrep.json").exists()
+        else ""
+    )
+    osv_content = (
+        (raw_dir / "osv.json").read_text(encoding="utf-8")
+        if (raw_dir / "osv.json").exists()
+        else ""
+    )
+    gitleaks_content = (
+        (raw_dir / "gitleaks.json").read_text(encoding="utf-8")
+        if (raw_dir / "gitleaks.json").exists()
+        else ""
+    )
     # Wrap contents in dict similar to run_cmd output
     semgrep = {"stdout": semgrep_content}
     osv = {"stdout": osv_content}
     gitleaks = {"stdout": gitleaks_content}
-
 
     (pack_root / "raw").mkdir(parents=True, exist_ok=True)
     (pack_root / "raw" / "semgrep.json").write_text(

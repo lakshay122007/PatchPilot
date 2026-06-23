@@ -191,13 +191,19 @@ ACTIVE_SCANS = {}
 def _scan_repo_dir(repo_dir: Path, progress_cb=None, job_dir: Path = None):
     if progress_cb:
         progress_cb("sast", "in_progress")
-    
+
     semgrep = run_semgrep(repo_dir)
     if job_dir:
-        semgrep_raw = run_cmd(["semgrep", "--config", "p/ci", "--json", "--quiet"], cwd=repo_dir, timeout_s=600)
+        semgrep_raw = run_cmd(
+            ["semgrep", "--config", "p/ci", "--json", "--quiet"],
+            cwd=repo_dir,
+            timeout_s=600,
+        )
         (job_dir / "raw").mkdir(parents=True, exist_ok=True)
-        (job_dir / "raw" / "semgrep.json").write_text(semgrep_raw.get("stdout", ""), encoding="utf-8")
-        
+        (job_dir / "raw" / "semgrep.json").write_text(
+            semgrep_raw.get("stdout", ""), encoding="utf-8"
+        )
+
     if progress_cb:
         progress_cb("sast", "completed")
 
@@ -205,21 +211,31 @@ def _scan_repo_dir(repo_dir: Path, progress_cb=None, job_dir: Path = None):
         progress_cb("dependency", "in_progress")
     osv = run_osv_scanner(repo_dir)
     if job_dir:
-        osv_raw = run_cmd(["osv-scanner", "--json", "--recursive", "."], cwd=repo_dir, timeout_s=600)
+        osv_raw = run_cmd(
+            ["osv-scanner", "--json", "--recursive", "."], cwd=repo_dir, timeout_s=600
+        )
         (job_dir / "raw").mkdir(parents=True, exist_ok=True)
-        (job_dir / "raw" / "osv.json").write_text(osv_raw.get("stdout", ""), encoding="utf-8")
+        (job_dir / "raw" / "osv.json").write_text(
+            osv_raw.get("stdout", ""), encoding="utf-8"
+        )
     if progress_cb:
         progress_cb("dependency", "completed")
 
     if progress_cb:
         progress_cb("secrets", "in_progress")
-    
+
     gitleaks = run_gitleaks(repo_dir)
     if job_dir:
-        gitleaks_raw = run_cmd(["gitleaks", "detect", "--no-git", "--redact", "--report-format", "json"], cwd=repo_dir, timeout_s=600)
+        gitleaks_raw = run_cmd(
+            ["gitleaks", "detect", "--no-git", "--redact", "--report-format", "json"],
+            cwd=repo_dir,
+            timeout_s=600,
+        )
         (job_dir / "raw").mkdir(parents=True, exist_ok=True)
-        (job_dir / "raw" / "gitleaks.json").write_text(gitleaks_raw.get("stdout", ""), encoding="utf-8")
-        
+        (job_dir / "raw" / "gitleaks.json").write_text(
+            gitleaks_raw.get("stdout", ""), encoding="utf-8"
+        )
+
     if progress_cb:
         progress_cb("secrets", "completed")
 
