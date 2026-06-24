@@ -92,6 +92,8 @@ async def init_db():
             await db.execute(
                 "ALTER TABLE findings ADD COLUMN false_positive INTEGER DEFAULT NULL"
             )
+            
+        if "labeled_at" not in columns:
             await db.execute(
                 "ALTER TABLE findings ADD COLUMN labeled_at TEXT DEFAULT NULL"
             )
