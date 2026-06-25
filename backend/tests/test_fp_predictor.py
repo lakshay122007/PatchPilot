@@ -14,10 +14,9 @@ class TestFalsePositivePredictor(unittest.TestCase):
         self.assertFalse(predictor.is_ready)
 
         mock_findings = [{"rule_id": "test", "ml_score": 1.0}]
-        result = predictor.adjust_scores(mock_findings)
+        result_scores = predictor.adjust_scores(mock_findings)
 
-        self.assertEqual(result, mock_findings)
-        self.assertEqual(result[0]["ml_score"], 1.0)
+        self.assertEqual(result_scores, [1.0])
 
     @patch("app.ml.fp_predictor.os.path.exists")
     @patch("app.ml.fp_predictor.joblib.load")
