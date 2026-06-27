@@ -1,7 +1,9 @@
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from app.main import _record_fixes_to_db
 from app.models import Fix
-import pytest
 
 
 @pytest.mark.anyio
